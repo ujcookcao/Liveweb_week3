@@ -47,6 +47,7 @@
 
       resizeCanvas();
 
+
     }
   </script>
   <style>
@@ -447,8 +448,8 @@
     }
 
     return extend(main, {
-    render: render,
-    morph: morph
+      render: render,
+      morph: morph
     });
 
 
@@ -504,11 +505,50 @@
     <input type="color" id="colorpick" name="color">
 
     <ul id="messageList"></ul>
+    <video src="" id="thevideo"></video>
+    <canvas id = "thecanvas"></canvas>
+    <img src="" alt="" id = "theimg">
   </div>
   <div>
 
   </div>
+  
+  <script>
+    window.addEventListener('onload', function () {
+      let video = document.getElementById('thevideo');
+      let thecanvas = document.getElementById('thecanvas');
+      let constraints = {
+        video: true,
+        audio: true
+      };
 
+      navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+          /* Use the stream */
+
+          // Attach to our video object
+          video.srcObject = stream;
+
+          // Wait for the stream to load enough to play
+          video.onloadedmetadata = function (e) {
+            video.play();
+            setInterval(function () {
+              thecanvas.width = video.videoWidth;
+              thecanvas.height = video.videoHeight;
+              thecanvas.getContext('2d').drawImage(video, 0, 0, thecanvas.width, thecanvas.height);
+            }, 1000);
+              socket.emit('video', thecanvas.toDataURL());
+          };
+        })
+        socket.on('v', function (data) {
+          let theimg = document.getElementById('theimg');
+          theimg.src = data;
+        })
+        .catch(function (err) {
+          /* Handle the error */
+          alert(err);
+        });
+    });
+  </script>
   <script>
     const underlayCanvas = document.getElementById('underlayCanvas');
 
@@ -537,12 +577,18 @@
       };
       eraseLine(ustartPoint.x, ustartPoint.y, unewPoint.x, unewPoint.y);
       ustartPoint = unewPoint;
+      socket.emit('erasing', {
+        xuStart: ustartPoint.x,
+        yuStart: ustartPoint.y,
+        xuEnd: unewPoint.x,
+        yuEnd: unewPoint.y
+      });
     });
     underlayCanvas.addEventListener('mouseup', () => {
       upainting = false;
     });
-    socket.on('erase', () => {
-      eraseLine(ustartPoint.x, ustartPoint.y, unewPoint.x, unewPoint.y);
+    socket.on('erase', (data) => {
+      eraseLine(data.xuStart, data.yuStart, data.xuEnd, data.yuEnd);
     });
 
     function eraseLine(xStart, yStart, xEnd, yEnd) {
